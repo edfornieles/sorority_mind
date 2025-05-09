@@ -5,33 +5,81 @@
   <title>Live Perception</title>
   <style>
     body {
-      background: black;
-      color: white;
-      font-family: monospace;
-      padding: 20px;
-      max-width: 600px;
-      margin: auto;
-    }
-    #feed {
-      white-space: pre-wrap;
-    }
-  </style>
+    background: black;
+    color: white;
+    font-family: monospace;
+    padding: 20px;
+    max-width: 600px;
+    margin: auto;
+  }
+  #feed {
+    white-space: pre-wrap;
+  }
+  .internal { color: #ff8080; }  /* 🔴 Red for internal states */
+  .external { color: #80bfff; }  /* 🔵 Blue for external perceptions */
+  </style> <!-- ✅ Close the style tag properly -->
 </head>
 <body>
   <h2>What She Sees & Feels</h2>
   <div id="feed">Loading perception...</div>
 
+  <!-- ✅ Move the script tag here, inside the body -->
   <script>
-    async function fetchPerception() {
-      const res = await fetch('/api/perception');
-      const data = await res.json();
-      const perceptionText = data.raw.join('\n'); // Format perception lines
+  async function fetchPerception() {
+  try {
+    const res = await fetch('/api/perception');
+    if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
 
-      document.getElementById('feed').innerHTML += `<p>${perceptionText}</p>`;
+    const data = await res.json();
+    console.log("Fetched perception data:", data);
+
+    if (!data.perception) {
+      document.getElementById('feed').innerHTML = "<p>Error: No perception data.</p>";
+      return;
     }
 
-    // Fetch new perception every 15s
-    setInterval(fetchPerception, 15000);
+    // Define category groups for color coding
+    const internalKeys = ["body", "selfImage", "emotion", "desires", "anxieties", "immediateDesires", "immediateAnxieties"];
+    const externalKeys = ["peoplePresent", "socialEnergy", "environment", "sensoryTriggers", "weather"];
+
+    const formattedPerception = Object.entries(data.perception)
+      .map(([key, value]) => {
+        const category = internalKeys.includes(key) ? "internal" : "external"; // ✅ Ensures new categories are color-coded
+        return `<p class="${category}"><b>${key}:</b> ${value}</p>`;
+      })
+      .join("");
+
+    document.getElementById('feed').innerHTML = formattedPerception;
+  } catch (error) {
+    console.error("Error fetching perception:", error);
+    document.getElementById('feed').innerHTML = "<p>Error loading perception.</p>";
+  }
+}
+    async function updateActiveStatus() {
+      console.log("Sending active user request...");
+      await fetch('/api/userActive', { method: 'POST' });
+    }
+
+    async function checkActiveUsers() {
+      try {
+        const res = await fetch('/api/activeUsers');
+        const data = await res.json();
+
+        console.log("Active users status:", data.active);  // ✅ Debug log
+
+        if (data.active) {
+          fetchPerception();  // ✅ Make sure perception is fetched
+        } else {
+          console.warn("User is not marked active, perception updates paused.");
+        }
+      } catch (error) {
+        console.error("Error checking active users:", error);
+      }
+    }
+
+    updateActiveStatus();  // ✅ Ensure user is marked active
+    fetchPerception();  // ✅ Ensure perception loads immediately on page load
+    setInterval(checkActiveUsers, 15000); // ✅ Check for active users every 15s
   </script>
 </body>
 </html>
