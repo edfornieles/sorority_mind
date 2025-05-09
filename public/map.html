@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Campus Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <style>
+    /* ✅ Ensure full-screen map */
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden; /* Prevent scrolling */
+    }
+
+    #map-container {
+      width: 100vw;
+      height: 100vh;
+      position: fixed; /* Ensures full-page display */
+      top: 0;
+      left: 0;
+    }
+
+    /* ✅ Blinking marker animation */
+    @keyframes blink {
+      0% { opacity: 1; }
+      50% { opacity: 0.3; }
+      100% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <h1 style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.5); color: white; padding: 10px; border-radius: 5px;">
+    Where is she now?
+  </h1>
+  <div id="map-container"></div>
+
+  <script>
+    // 🌍 Initialize OpenStreetMap
+    const map = L.map('map-container').setView([37.8719, -122.2585], 18); // ✅ Max zoom level
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // 📍 Blinking red marker
+    const markerIcon = L.divIcon({
+      className: 'blinking-marker',
+      html: `<div style="width: 15px; height: 15px; background-color: red; border-radius: 50%; animation: blink 1s infinite;"></div>`,
+      iconSize: [15, 15]
+    });
+
+    const marker = L.marker([37.8719, -122.2585], { icon: markerIcon }).addTo(map);
+
+    // 🚀 Update marker position dynamically
+    async function updateLocation() {
+      try {
+        const res = await fetch("/api/move");
+        const data = await res.json();
+
+        if (!data.coordinates || !data.coordinates.lat || !data.coordinates.lon) {
+          console.error("Invalid coordinates received:", data);
+          return;
+        }
+
+        console.log("Moved to:", data.location);
+        marker.setLatLng([data.coordinates.lat, data.coordinates.lon]); // ✅ Update marker position
+      } catch (err) {
+        console.error("Error updating location:", err);
+      }
+    }
+
+    updateLocation(); // ✅ Run on page load
+    setInterval(updateLocation, 60000); // ✅ Refresh every 60 sec
+  </script>
+</body>
+</html>

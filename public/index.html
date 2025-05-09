@@ -4,29 +4,33 @@
   <meta charset="UTF-8">
   <title>Sorority Girl's Mind</title>
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-image: url('https://www.mohawkhome.com/wp-content/uploads/2018/08/Sorority-House-Makeover-1-NEW.jpg');
+    /* ✅ Background Styling */
+    #background {
+      width: 100%;
+      height: 100vh;
       background-size: cover;
       background-position: center;
-      height: 100vh;
-      color: white;
-      font-family: 'Arial', sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
+      position: fixed;
+      z-index: -1;
     }
 
+    /* ✅ Thought Display */
     #thought {
       font-size: 3em;
       font-weight: bold;
       max-width: 80%;
       line-height: 1.3;
-      transition: opacity 0.5s ease-in-out;
+      color: white;
+      text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      opacity: 0.9;
     }
 
+    /* ✅ Weather & Time */
     #weather-time {
       position: absolute;
       top: 20px;
@@ -39,6 +43,7 @@
       border-radius: 8px;
     }
 
+    /* ✅ Mood Display */
     #mood {
       position: absolute;
       top: 20px;
@@ -50,42 +55,64 @@
   </style>
 </head>
 <body>
+  <!-- ✅ Background & Dynamic Elements -->
+  <div id="background"></div>
   <div id="weather-time">Weather: ..., Time: ...</div>
   <div id="mood">Mood: ...</div>
   <div id="thought">Loading thought...</div>
 
   <script>
-    const thoughtDiv = document.getElementById('thought');
-
-    async function loadThought() {
-      try {
-        const res = await fetch('/thought');
-        const data = await res.json();
-        fadeText(data.thought);
-        document.getElementById('weather-time').textContent = `${data.weather} | ${data.time}`;
-        if (data.mood) {
-          document.getElementById('mood').textContent = `Mood: ${data.mood}`;
-        }
-      } catch (err) {
-        fadeText("Couldn't load thought.");
-        document.getElementById('weather-time').textContent = "Weather: ??? | Time: ???";
-        document.getElementById('mood').textContent = "Mood: ???";
-        console.error(err);
-      }
-    }
-
+    /* 🔹 Smooth Transition for Thought Updates */
     function fadeText(newText) {
-      thoughtDiv.style.opacity = 0;
+      const thoughtDiv = document.getElementById("thought");
+      if (!thoughtDiv) return;
+
+      thoughtDiv.style.opacity = 0.3;
       setTimeout(() => {
         thoughtDiv.textContent = newText;
         thoughtDiv.style.opacity = 1;
-      }, 500);
+      }, 300);
     }
 
-    // Initial load
-    loadThought();
-    // Refresh every 20 seconds
-    setInterval(loadThought, 20000);
+    /* 🔹 Fetch Thought & Update Page Elements */
+    async function loadThought() {
+      try {
+        console.log("Fetching Thought...");
+        const thoughtRes = await fetch('/thought');
+        if (!thoughtRes.ok) throw new Error("Thought API failed.");
+        const thoughtData = await thoughtRes.json();
+
+        console.log("Fetching Perception...");
+        const perceptionRes = await fetch('/api/perception');
+        if (!perceptionRes.ok) throw new Error("Perception API failed.");
+        const perceptionData = await perceptionRes.json();
+
+        console.log("Updating Weather, Location, and Background Image");
+        console.log("Weather:", perceptionData.perception.external.weather);
+        console.log("Location:", perceptionData.perception.external.environment);
+        console.log("Image:", `/images/${perceptionData.perception.external.environment}.jpg`);
+
+        // ✅ Ensure thought updates properly
+        fadeText(thoughtData.thought);
+        document.getElementById('weather-time').textContent = `Weather: ${perceptionData.perception.external.weather} | Time: ${new Date().toLocaleTimeString()}`;
+
+        // ✅ Ensure background updates correctly
+        document.getElementById("background").style.backgroundImage = `url('/images/${perceptionData.perception.external.environment}.jpg')`;
+
+      } catch (err) {
+        console.error("Error loading thought or perception:", err);
+      }
+    }
+
+    /* 🔹 Initial Load on Page Open */
+    document.addEventListener("DOMContentLoaded", () => {
+      loadThought();
+    });
+
+    /* 🔹 Sync Refresh Intervals */
+    setInterval(() => {
+      loadThought();
+    }, 30000);
   </script>
 </body>
 </html>

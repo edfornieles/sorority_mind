@@ -5,81 +5,113 @@
   <title>Live Perception</title>
   <style>
     body {
-    background: black;
-    color: white;
-    font-family: monospace;
-    padding: 20px;
-    max-width: 600px;
-    margin: auto;
-  }
-  #feed {
-    white-space: pre-wrap;
-  }
-  .internal { color: #ff8080; }  /* 🔴 Red for internal states */
-  .external { color: #80bfff; }  /* 🔵 Blue for external perceptions */
-  </style> <!-- ✅ Close the style tag properly -->
+      background: black;
+      color: white;
+      font-family: monospace;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    #feed {
+      white-space: pre-wrap;
+    }
+    .internal { color: #ff8080; }  /* 🔴 Red for internal states */
+    .external { color: #80bfff; }  /* 🔵 Blue for external perceptions */
+    .short-term { color: #ffcc80; }  /* 🟠 Orange for short-term memory */
+    .mid-term { color: #cc80ff; }  /* 🟣 Purple for mid-term memory */
+    .long-term { color: #80ff80; }  /* 🟢 Green for long-term memory */
+  </style>
 </head>
 <body>
   <h2>What She Sees & Feels</h2>
   <div id="feed">Loading perception...</div>
 
-  <!-- ✅ Move the script tag here, inside the body -->
+  <h2>Short-Term Memory</h2>
+  <div id="short-memory">Loading...</div>
+
+  <h2>Mid-Term Memory</h2>
+  <div id="mid-memory">Loading...</div>
+
+  <h2>Long-Term Memory</h2>
+  <div id="long-memory">Loading...</div>
+
   <script>
   async function fetchPerception() {
-  try {
-    const res = await fetch('/api/perception');
-    if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+    try {
+      console.log("🔹 Fetching Perception Data...");
+      const res = await fetch("/api/perception");
+      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
 
-    const data = await res.json();
-    console.log("Fetched perception data:", data);
+      const data = await res.json();
+      console.log("🔹 Received Perception Data:", data);
 
-    if (!data.perception) {
-      document.getElementById('feed').innerHTML = "<p>Error: No perception data.</p>";
-      return;
+      if (!data.perception) {
+        document.getElementById('feed').innerHTML = "<p>Error: No perception data.</p>";
+        return;
+      }
+
+      const internalPerception = Object.entries(data.perception.internal || {})
+        .map(([key, value]) => `<p class="internal"><b>${key}:</b> ${value}</p>`)
+        .join("");
+
+      const externalPerception = Object.entries(data.perception.external || {})
+        .map(([key, value]) => `<p class="external"><b>${key}:</b> ${value}</p>`)
+        .join("");
+
+      document.getElementById('feed').innerHTML = `
+        <h2>What She Sees & Feels</h2>
+        <h3>Internal Perception:</h3> ${internalPerception}
+        <h3>External Perception:</h3> ${externalPerception}
+      `;
+
+    } catch (error) {
+      console.error("🔺 Error Fetching Perception:", error);
+      document.getElementById('feed').innerHTML = "<p>Error loading perception.</p>";
     }
+  }
 
-    // Define category groups for color coding
-    const internalKeys = ["body", "selfImage", "emotion", "desires", "anxieties", "immediateDesires", "immediateAnxieties"];
-    const externalKeys = ["peoplePresent", "socialEnergy", "environment", "sensoryTriggers", "weather"];
+  async function fetchMemory() {
+  try {
+    console.log("🔹 Fetching Memory Data...");
+    const shortRes = await fetch("/api/shortMemory");
+    const midRes = await fetch("/api/midMemory");
+    const longRes = await fetch("/api/longMemory");
 
-    const formattedPerception = Object.entries(data.perception)
-      .map(([key, value]) => {
-        const category = internalKeys.includes(key) ? "internal" : "external"; // ✅ Ensures new categories are color-coded
-        return `<p class="${category}"><b>${key}:</b> ${value}</p>`;
-      })
-      .join("");
+    if (!shortRes.ok || !midRes.ok || !longRes.ok) throw new Error("Memory API failed.");
 
-    document.getElementById('feed').innerHTML = formattedPerception;
+    const shortData = await shortRes.json();
+    const midData = await midRes.json();
+    const longData = await longRes.json();
+
+    console.log("🔹 Received Memory Data:", { shortData, midData, longData });
+
+    document.getElementById('short-memory').innerHTML = `
+      <h3>Tasks:</h3> ${shortData.tasks?.map(m => `<p class="short-term">${m}</p>`).join("") || "No tasks"}
+      <h3>Social Thoughts:</h3> ${shortData.socialThoughts?.map(m => `<p class="short-term">${m}</p>`).join("") || "No social thoughts"}
+      <h3>Emotional Carryover:</h3> ${shortData.emotionalCarryover?.map(m => `<p class="short-term">${m}</p>`).join("") || "No emotional carryover"}
+      <h3>Intrusive Thoughts:</h3> ${shortData.mentalLoops?.map(m => `<p class="short-term">${m}</p>`).join("") || "No mental loops"}
+      <h3>Sensory Awareness:</h3> ${shortData.sensoryAwareness?.map(m => `<p class="short-term">${m}</p>`).join("") || "No sensory awareness"}
+      <h3>Fleeting Curiosities:</h3> ${shortData.fleetingCuriosities?.map(m => `<p class="short-term">${m}</p>`).join("") || "No fleeting curiosities"}
+    `;
+
+    document.getElementById('mid-memory').innerHTML = midData.memory?.map(m => `<p class="mid-term">${m}</p>`).join("") || "<p>No mid-term memory.</p>";
+    document.getElementById('long-memory').innerHTML = longData.memory?.map(m => `<p class="long-term">${m}</p>`).join("") || "<p>No long-term memory.</p>";
+
   } catch (error) {
-    console.error("Error fetching perception:", error);
-    document.getElementById('feed').innerHTML = "<p>Error loading perception.</p>";
+    console.error("🔺 Error Fetching Memory:", error);
+    document.getElementById('short-memory').innerHTML = "<p>Error loading memory.</p>";
+    document.getElementById('mid-memory').innerHTML = "<p>Error loading memory.</p>";
+    document.getElementById('long-memory').innerHTML = "<p>Error loading memory.</p>";
   }
 }
-    async function updateActiveStatus() {
-      console.log("Sending active user request...");
-      await fetch('/api/userActive', { method: 'POST' });
-    }
 
-    async function checkActiveUsers() {
-      try {
-        const res = await fetch('/api/activeUsers');
-        const data = await res.json();
+  document.addEventListener("DOMContentLoaded", () => {
+    fetchPerception();
+    fetchMemory();
+  });
 
-        console.log("Active users status:", data.active);  // ✅ Debug log
-
-        if (data.active) {
-          fetchPerception();  // ✅ Make sure perception is fetched
-        } else {
-          console.warn("User is not marked active, perception updates paused.");
-        }
-      } catch (error) {
-        console.error("Error checking active users:", error);
-      }
-    }
-
-    updateActiveStatus();  // ✅ Ensure user is marked active
-    fetchPerception();  // ✅ Ensure perception loads immediately on page load
-    setInterval(checkActiveUsers, 15000); // ✅ Check for active users every 15s
+  setInterval(fetchPerception, 30000); // ✅ Regular perception updates every 30s
+  setInterval(fetchMemory, 60000); // ✅ Memory updates every 60s
   </script>
 </body>
 </html>
