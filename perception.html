@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Perception</title>
+  <style>
+    body {
+      background: black;
+      color: white;
+      font-family: monospace;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    #feed {
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h2>What She Sees & Feels</h2>
+  <div id="feed">Loading perception...</div>
+
+  <script>
+    async function fetchPerception() {
+      const res = await fetch('/api/perception');
+      const data = await res.json();
+      const perceptionText = data.raw.join('\n'); // Format perception lines
+
+      document.getElementById('feed').innerHTML += `<p>${perceptionText}</p>`;
+    }
+
+    // Fetch new perception every 15s
+    setInterval(fetchPerception, 15000);
+  </script>
+</body>
+</html>
