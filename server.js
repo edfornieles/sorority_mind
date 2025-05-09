@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import axios from 'axios';
+import { generatePerception } from './perception.js';
 
 dotenv.config();
 
@@ -48,9 +49,13 @@ app.get('/thought', async (req, res) => {
       
       const weather = `Weather: ${condition}, ${temp}°F`;
       const time = `Time: ${localTime}`;
+      const perception = generatePerception();
+      perception.external.weather = condition.toLowerCase(); // inject real weather
       
-      const prompt = `You are a 21-year-old sorority girl at Berkeley. ${weather} Speak your thoughts as a single inner monologue sentence. No greetings. No explanations.`;
+      const perceptionText = `She perceives: ${perception.external.setting}, the weather is ${perception.external.weather}, ${perception.external.social}. Internally: she feels ${perception.internal.emotion}, her body reports ${perception.internal.body}, and she desires ${perception.internal.desire}.`;
       
+      const prompt = `You are a 21-year-old sorority girl at Berkeley.\n${perceptionText}\nOutput a single internal thought influenced by this perception. No greetings. No explanations.`;
+             
       console.log("System prompt:", prompt);
       
       const response = await openai.chat.completions.create({
