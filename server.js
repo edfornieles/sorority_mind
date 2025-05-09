@@ -33,22 +33,13 @@ let perceptionState = {
 // Serve static files like index.html
 app.use(express.static(__dirname));
 
-// Get current weather in Berkeley
+// (Place this back above mutatePerception)
 async function getBerkeleyWeather() {
   const key = process.env.WEATHER_API_KEY;
   const url = `http://api.weatherapi.com/v1/current.json?key=${key}&q=94720&aqi=no`;
-
-  try {
-    const res = await axios.get(url);
-    const data = res.data;
-    const condition = data.current.condition.text;
-    const temp = data.current.temp_f;
-    return `It's currently ${condition.toLowerCase()} and ${temp}°F in Berkeley.`;
-  } catch (err) {
-    console.error('Weather fetch error:', err.message);
-    return null;
-  }
-  
+  const res = await axios.get(url);
+  const { condition, temp_f } = res.data.current;
+  return `It's currently ${condition.text.toLowerCase()} and ${temp_f}°F in Berkeley.`;
 }
 
 // ⬇️ Move mutatePerception() here, *outside* the function above
@@ -104,14 +95,77 @@ app.get('/thought', async (req, res) => {
       });
       
       const thought = response.choices[0].message.content.trim();
-      res.json({ thought, weather, time });    
-  
+      // inside /thought route, after `const thought = …`
+      perceptionState.memory.push(thought);
+      if (perceptionState.memory.length > 5) perceptionState.memory.shift();
+      res.json({ thought, weather, time });
+     
     } catch (err) {
       console.error('Error generating thought:', err.message);
       res.status(500).json({ error: 'Something went wrong.' });
     }
-  });
   
+  });
+  /* -------------------------------------------------
+   ROUTE:  /perception
+   -------------------------------------------------
+   - Calls OpenAI to generate three ultra-short perception
+     fragments (≤ 12 words each).
+   - Updates perceptionState (internal & external).
+   - Returns the fresh snapshot so perception.html can stream it.
+--------------------------------------------------*/
+app.get("/perception", async (req, res) => {
+  try {
+    /* ---------- 1.  Compose a tiny system prompt ---------- */
+    const weatherLine = await getBerkeleyWeather();           // "It's currently misty and 53°F …"
+    const seed =
+      `Generate *exactly* 3 bullet lines (≤12 words each) covering:\n` +
+      `• what she visually notices\n• a bodily sensation\n• an emotional / social pressure.\n` +
+      `Weather: ${weatherLine}\n` +
+      `Current emotion: ${perceptionState.internal.emotion}\n` +
+      `Current body: ${perceptionState.internal.body}\n` +
+      `Current desire: ${perceptionState.internal.desire}`;
+
+    /* ---------- 2.  Ask GPT-4o-mini for the fragments ---------- */
+    const ai = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: seed }],
+      max_tokens: 60,
+    });
+
+    /* ---------- 3.  Parse the three lines ---------- */
+    const lines = ai.choices[0].message.content
+      .trim()
+      .split(/\n+/)
+      .map(l => l.replace(/^[-*]\s*/, "").trim())        // remove bullets
+      .filter(Boolean)
+      .slice(0, 3);
+
+    // Safety fallback if model misbehaves
+    while (lines.length < 3) lines.push("(unavailable)");
+
+    /* ---------- 4.  Map lines → perceptionState ---------- */
+    // 0 = external visual, 1 = internal body, 2 = internal emotion / social
+    perceptionState.external.setting = lines[0];
+    perceptionState.internal.body    = lines[1];
+    perceptionState.internal.emotion = lines[2];
+
+    /* ---------- 5.  Return snapshot to browser ---------- */
+    res.json({
+      perception: {
+        ...perceptionState.internal,
+        ...perceptionState.external,
+      },
+      raw: lines,              // for easy rendering in perception.html
+      updatedAt: new Date().toISOString(),
+    });
+
+    console.log("Perception lines:", lines);
+  } catch (err) {
+    console.error("Perception error:", err.message);
+    res.status(500).json({ error: "Perception unavailable" });
+  }
+});
   app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
   });
