@@ -1,7 +1,14 @@
 // sorority_mind/server.js
 import express from 'express';
-import { readFile } from 'fs/promises';
 import path from 'path';
+
+const app = express();
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+const PORT = process.env.PORT || 3000;
+
+import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
@@ -10,9 +17,6 @@ import axios from 'axios';
 dotenv.config();
 
 const openai = new OpenAI();
-const app = express();
-const PORT = process.env.PORT || 3000;
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
