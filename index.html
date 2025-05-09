@@ -27,6 +27,18 @@
       transition: opacity 0.5s ease-in-out;
     }
 
+    #weather-time {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      font-size: 1em;
+      font-weight: bold;
+      color: #ffc0cb;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+
     #mood {
       position: absolute;
       top: 20px;
@@ -38,22 +50,26 @@
   </style>
 </head>
 <body>
+  <div id="weather-time">Weather: ..., Time: ...</div>
   <div id="mood">Mood: ...</div>
   <div id="thought">Loading thought...</div>
 
   <script>
     const thoughtDiv = document.getElementById('thought');
-    const moodDiv = document.getElementById('mood');
 
     async function loadThought() {
       try {
         const res = await fetch('/thought');
         const data = await res.json();
         fadeText(data.thought);
-        moodDiv.textContent = `Mood: ${data.mood}`;
+        document.getElementById('weather-time').textContent = `${data.weather} | ${data.time}`;
+        if (data.mood) {
+          document.getElementById('mood').textContent = `Mood: ${data.mood}`;
+        }
       } catch (err) {
         fadeText("Couldn't load thought.");
-        moodDiv.textContent = "Mood: ???";
+        document.getElementById('weather-time').textContent = "Weather: ??? | Time: ???";
+        document.getElementById('mood').textContent = "Mood: ???";
         console.error(err);
       }
     }
@@ -66,7 +82,9 @@
       }, 500);
     }
 
+    // Initial load
     loadThought();
+    // Refresh every 20 seconds
     setInterval(loadThought, 20000);
   </script>
 </body>
