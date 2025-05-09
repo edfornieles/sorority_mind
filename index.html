@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sorority Girl's Mind</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-image: url('https://www.mohawkhome.com/wp-content/uploads/2018/08/Sorority-House-Makeover-1-NEW.jpg');
+      background-size: cover;
+      background-position: center;
+      height: 100vh;
+      color: white;
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    #thought {
+      font-size: 3em;
+      font-weight: bold;
+      max-width: 80%;
+      line-height: 1.3;
+      transition: opacity 0.5s ease-in-out;
+    }
+
+    #mood {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #ffc0cb;
+    }
+  </style>
+</head>
+<body>
+  <div id="mood">Mood: ...</div>
+  <div id="thought">Loading thought...</div>
+
+  <script>
+    const thoughtDiv = document.getElementById('thought');
+    const moodDiv = document.getElementById('mood');
+
+    async function loadThought() {
+      try {
+        const res = await fetch('/thought');
+        const data = await res.json();
+        fadeText(data.thought);
+        moodDiv.textContent = `Mood: ${data.mood}`;
+      } catch (err) {
+        fadeText("Couldn't load thought.");
+        moodDiv.textContent = "Mood: ???";
+        console.error(err);
+      }
+    }
+
+    function fadeText(newText) {
+      thoughtDiv.style.opacity = 0;
+      setTimeout(() => {
+        thoughtDiv.textContent = newText;
+        thoughtDiv.style.opacity = 1;
+      }, 500);
+    }
+
+    loadThought();
+    setInterval(loadThought, 20000);
+  </script>
+</body>
+</html>
