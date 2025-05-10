@@ -1,117 +1,182 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Live Perception</title>
-  <style>
-    body {
-      background: black;
-      color: white;
-      font-family: monospace;
-      padding: 20px;
-      max-width: 600px;
-      margin: auto;
-    }
-    #feed {
-      white-space: pre-wrap;
-    }
-    .internal { color: #ff8080; }  /* 🔴 Red for internal states */
-    .external { color: #80bfff; }  /* 🔵 Blue for external perceptions */
-    .short-term { color: #ffcc80; }  /* 🟠 Orange for short-term memory */
-    .mid-term { color: #cc80ff; }  /* 🟣 Purple for mid-term memory */
-    .long-term { color: #80ff80; }  /* 🟢 Green for long-term memory */
-  </style>
-</head>
-<body>
-  <h2>What She Sees & Feels</h2>
-  <div id="feed">Loading perception...</div>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Perception & Memory Visualization</title>
+    <style>
+      body {
+        font-family: "Courier New", Courier, monospace;
+        background: #f9f9f9;
+        margin: 0;
+        padding: 20px;
+        line-height: 1.5;
+      }
+      h1,
+      h2 {
+        color: #333;
+        margin: 0 0 10px;
+        font-weight: normal;
+      }
+      .section {
+        margin-bottom: 20px;
+        background: #fff;
+        padding: 15px;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+      }
+      .section pre {
+        background: #eef;
+        padding: 10px;
+        border: 1px solid #ccd;
+        border-radius: 4px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .memory {
+        background: #e7f3fe;
+        border-left: 5px solid #2196F3;
+        margin: 5px 0;
+        padding: 5px 10px;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      .memory:hover {
+        background: #d0e7fc;
+      }
+      .memory-details {
+        display: none;
+        margin-top: 5px;
+        font-size: 0.9em;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Perception & Memory Visualization</h1>
 
-  <h2>Short-Term Memory</h2>
-  <div id="short-memory">Loading...</div>
+    <div class="section" id="thought">
+      <h2>Internal Thought</h2>
+      <div id="thoughtContent">Loading internal thought...</div>
+    </div>
 
-  <h2>Mid-Term Memory</h2>
-  <div id="mid-memory">Loading...</div>
+    <div class="section" id="identity">
+      <h2>Identity</h2>
+      <div id="identityContent">Loading identity...</div>
+    </div>
 
-  <h2>Long-Term Memory</h2>
-  <div id="long-memory">Loading...</div>
+    <div class="section" id="memory">
+      <h2>Influencing Memories</h2>
+      <div id="memoryContent">Loading relevant memories...</div>
+    </div>
 
-  <script>
-  async function fetchPerception() {
-    try {
-      console.log("🔹 Fetching Perception Data...");
-      const res = await fetch("/api/perception");
-      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+    <div class="section" id="perception">
+      <h2>Perception</h2>
+      <div id="perceptionContent">Loading perception state...</div>
+    </div>
 
-      const data = await res.json();
-      console.log("🔹 Received Perception Data:", data);
-
-      if (!data.perception) {
-        document.getElementById('feed').innerHTML = "<p>Error: No perception data.</p>";
-        return;
+    <script>
+      // Function to fetch data from an API endpoint with error handling.
+      async function fetchData(url, body = null) {
+        try {
+          const options = {
+            method: body ? "POST" : "GET",
+            headers: { "Content-Type": "application/json" }
+          };
+          if (body) {
+            options.body = JSON.stringify(body);
+          }
+          const response = await fetch(url, options);
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+          return await response.json();
+        } catch (error) {
+          console.error(`Error fetching ${url}:`, error);
+          return { error: error.message };
+        }
       }
 
-      const internalPerception = Object.entries(data.perception.internal || {})
-        .map(([key, value]) => `<p class="internal"><b>${key}:</b> ${value}</p>`)
-        .join("");
+      // Toggle the display of detailed memory information when a memory div is clicked.
+      function toggleMemoryDetail(element) {
+        const detailElem = element.querySelector(".memory-details");
+        if (detailElem) {
+          detailElem.style.display =
+            detailElem.style.display === "none" ? "block" : "none";
+        }
+      }
 
-      const externalPerception = Object.entries(data.perception.external || {})
-        .map(([key, value]) => `<p class="external"><b>${key}:</b> ${value}</p>`)
-        .join("");
+      // Update all sections by fetching data from the server.
+      async function updateSection() {
+        // Fetch the current thought.
+        const thoughtData = await fetchData("/api/thought");
+        const thoughtElem = document.getElementById("thoughtContent");
+        if (thoughtData.error) {
+          thoughtElem.innerHTML = `<pre>Error: ${thoughtData.error}</pre>`;
+        } else {
+          thoughtElem.innerHTML = `<pre>${
+            thoughtData.current || "No current thought available."
+          }</pre>`;
+        }
 
-      document.getElementById('feed').innerHTML = `
-        <h2>What She Sees & Feels</h2>
-        <h3>Internal Perception:</h3> ${internalPerception}
-        <h3>External Perception:</h3> ${externalPerception}
-      `;
+        // Fetch the identity data.
+        const identityData = await fetchData("/api/identity");
+        const identityElem = document.getElementById("identityContent");
+        if (identityData.error) {
+          identityElem.innerHTML = `<pre>Error: ${identityData.error}</pre>`;
+        } else {
+          identityElem.innerHTML = `<pre>${JSON.stringify(
+            identityData,
+            null,
+            2
+          )}</pre>`;
+        }
 
-    } catch (error) {
-      console.error("🔺 Error Fetching Perception:", error);
-      document.getElementById('feed').innerHTML = "<p>Error loading perception.</p>";
-    }
-  }
+        // Fetch the perception and memory influences.
+        // Use GET; if your endpoint requires context, adjust the API accordingly.
+        const perceptionData = await fetchData("/api/perception");
+        const perceptionElem = document.getElementById("perceptionContent");
+        const memoryContentElem = document.getElementById("memoryContent");
 
-  async function fetchMemory() {
-  try {
-    console.log("🔹 Fetching Memory Data...");
-    const shortRes = await fetch("/api/shortMemory");
-    const midRes = await fetch("/api/midMemory");
-    const longRes = await fetch("/api/longMemory");
+        if (perceptionData.error) {
+          perceptionElem.innerHTML = `<pre>Error: ${perceptionData.error}</pre>`;
+          memoryContentElem.innerHTML =
+            '<div class="memory">Error loading memory influences.</div>';
+        } else {
+          perceptionElem.innerHTML = `<pre>${JSON.stringify(
+            perceptionData.perception,
+            null,
+            2
+          )}</pre>`;
 
-    if (!shortRes.ok || !midRes.ok || !longRes.ok) throw new Error("Memory API failed.");
+          let memoryHtml = "";
+          if (
+            perceptionData.memoriesInfluencingPerception &&
+            perceptionData.memoriesInfluencingPerception.length > 0
+          ) {
+            perceptionData.memoriesInfluencingPerception.forEach((mem) => {
+              // Assume each memory is either a string or an object with
+              // "content" and "detail" properties.
+              const summary = typeof mem === "string" ? mem : mem.content;
+              const detail =
+                typeof mem === "string" ? "No additional details." : mem.detail;
+              memoryHtml += `
+                <div class="memory" onclick="toggleMemoryDetail(this)" title="Click to toggle details">
+                  ${summary}
+                  <div class="memory-details">${detail}</div>
+                </div>`;
+            });
+          } else {
+            memoryHtml =
+              '<div class="memory">No significant memories influencing perception.</div>';
+          }
+          memoryContentElem.innerHTML = memoryHtml;
+        }
+      }
 
-    const shortData = await shortRes.json();
-    const midData = await midRes.json();
-    const longData = await longRes.json();
-
-    console.log("🔹 Received Memory Data:", { shortData, midData, longData });
-
-    document.getElementById('short-memory').innerHTML = `
-      <h3>Tasks:</h3> ${shortData.tasks?.map(m => `<p class="short-term">${m}</p>`).join("") || "No tasks"}
-      <h3>Social Thoughts:</h3> ${shortData.socialThoughts?.map(m => `<p class="short-term">${m}</p>`).join("") || "No social thoughts"}
-      <h3>Emotional Carryover:</h3> ${shortData.emotionalCarryover?.map(m => `<p class="short-term">${m}</p>`).join("") || "No emotional carryover"}
-      <h3>Intrusive Thoughts:</h3> ${shortData.mentalLoops?.map(m => `<p class="short-term">${m}</p>`).join("") || "No mental loops"}
-      <h3>Sensory Awareness:</h3> ${shortData.sensoryAwareness?.map(m => `<p class="short-term">${m}</p>`).join("") || "No sensory awareness"}
-      <h3>Fleeting Curiosities:</h3> ${shortData.fleetingCuriosities?.map(m => `<p class="short-term">${m}</p>`).join("") || "No fleeting curiosities"}
-    `;
-
-    document.getElementById('mid-memory').innerHTML = midData.memory?.map(m => `<p class="mid-term">${m}</p>`).join("") || "<p>No mid-term memory.</p>";
-    document.getElementById('long-memory').innerHTML = longData.memory?.map(m => `<p class="long-term">${m}</p>`).join("") || "<p>No long-term memory.</p>";
-
-  } catch (error) {
-    console.error("🔺 Error Fetching Memory:", error);
-    document.getElementById('short-memory').innerHTML = "<p>Error loading memory.</p>";
-    document.getElementById('mid-memory').innerHTML = "<p>Error loading memory.</p>";
-    document.getElementById('long-memory').innerHTML = "<p>Error loading memory.</p>";
-  }
-}
-
-  document.addEventListener("DOMContentLoaded", () => {
-    fetchPerception();
-    fetchMemory();
-  });
-
-  setInterval(fetchPerception, 30000); // ✅ Regular perception updates every 30s
-  setInterval(fetchMemory, 60000); // ✅ Memory updates every 60s
-  </script>
-</body>
+      // Initial load and periodic update every 5 seconds.
+      updateSection();
+      setInterval(updateSection, 5000);
+    </script>
+  </body>
 </html>
